@@ -23,7 +23,8 @@ parser.add_argument('-n_z', type=int, default=8, help='hidden dimension of z (de
 parser.add_argument('-LAMBDA', type=float, default=10, help='regularization coef MMD term (default: 10)')
 parser.add_argument('-n_channel', type=int, default=1, help='input channels (default: 1)')
 parser.add_argument('-sigma', type=float, default=1, help='variance of hidden dimension (default: 1)')
-args = parser.parse_args()
+# args = parser.parse_args()
+args = parser.parse_args('')
 
 trainset = MNIST(root='./data/',
                  train=True,
@@ -135,7 +136,7 @@ class Discriminator(nn.Module):
         x = self.main(x)
         return x
 
-encoder, decoder, discriminator = Encoder(args), Decoder(args), Discriminator(args)
+encoder, decoder, discriminator = Encoder(args).to('cuda'), Decoder(args).to('cuda'), Discriminator(args).to('cuda')
 criterion = nn.MSELoss()
 
 encoder.train()
@@ -151,8 +152,8 @@ enc_scheduler = StepLR(enc_optim, step_size=30, gamma=0.5)
 dec_scheduler = StepLR(dec_optim, step_size=30, gamma=0.5)
 dis_scheduler = StepLR(dis_optim, step_size=30, gamma=0.5)
 
-if torch.cuda.is_available():
-    encoder, decoder, discriminator = encoder.cuda(), decoder.cuda(), discriminator.cuda()
+# if torch.cuda.is_available():
+#     encoder, decoder, discriminator = encoder.cuda(), decoder.cuda(), discriminator.cuda()
 
 one = torch.Tensor([1])
 mone = one * -1
@@ -189,8 +190,8 @@ for epoch in range(args.epochs):
         z_real = encoder(images)
         d_real = discriminator(z_real)
 
-        torch.log(d_fake).mean().backward(mone)
-        torch.log(1 - d_real).mean().backward(mone)
+        torch.log(d_fake).mean().unsqueeze(0).backward(mone)
+        torch.log(1 - d_real).mean().unsqueeze(0).backward(mone)
 
         dis_optim.step()
 
@@ -209,8 +210,8 @@ for epoch in range(args.epochs):
         recon_loss = criterion(x_recon, images)
         d_loss = args.LAMBDA * (torch.log(d_real)).mean()
 
-        recon_loss.backward(one)
-        d_loss.backward(mone)
+        recon_loss.unsqueeze(0).backward(one)
+        d_loss.unsqueeze(0).backward(mone)
 
         enc_optim.step()
         dec_optim.step()
